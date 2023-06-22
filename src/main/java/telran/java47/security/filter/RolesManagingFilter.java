@@ -20,7 +20,7 @@ import telran.java47.accounting.model.UserAccount;
 @Component
 @RequiredArgsConstructor
 @Order(20)
-public class AdminFilter implements Filter {
+public class RolesManagingFilter implements Filter {
 	
 	final UserAccountRepository userAccountRepository;
 
@@ -30,18 +30,22 @@ public class AdminFilter implements Filter {
 		HttpServletRequest request = (HttpServletRequest) req;
 		HttpServletResponse response = (HttpServletResponse) resp;
 		if(checkEdpoint(request.getMethod(), request.getServletPath())) {
-			UserAccount userAccount = userAccountRepository.findById(request.getUserPrincipal().getName()).orElse(null);
-			if(userAccount == null || !userAccount.getRoles().contains("Administrator")) {
-				response.sendError(403, "You are permitted for this action");
+			UserAccount userAccount = userAccountRepository.findById(request.getUserPrincipal().getName()).get();
+			if(!userAccount.getRoles().contains("Administrator")) {
+				response.sendError(403, "You are not permitted for this action");
+				return;
+			}
+			if(!userAccount.getRoles().contains("Moderator")) {
+				response.sendError(403);
 				return;
 			}
 		}
 		chain.doFilter(request, response);
 	}
 
-	private boolean checkEdpoint(String method, String servletPath) {
-		return !("PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method)
-				&& servletPath.matches("account/user/[a-zA-Z0-9]+?(/role/[a-zA-Z0-9]+)?/? "));
-	}
+	private boolean checkEdpoint(String method, String path) {
+		return "DELETE".equalsIgnoreCase(method) && path.matches("/account/user/\\w+/role/\\w+/?")
+				|| path.matches("/forum/post/\\w+/?");
+				}
 
 }
